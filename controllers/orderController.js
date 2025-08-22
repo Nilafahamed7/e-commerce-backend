@@ -1,11 +1,9 @@
-// server/controllers/orderController.js
 import Order from "../models/Order.js";
 import Razorpay from "razorpay";
-import dotenv from "dotenv"
+import dotenv from "dotenv";
 import crypto from "crypto";
-dotenv.config()
 
-console.log("Razorpay Keys:", process.env.RAZORPAY_KEY_ID, process.env.RAZORPAY_KEY_SECRET ? "Loaded" : "Missing");
+dotenv.config();
 
 // ✅ Razorpay instance
 const razorpay = new Razorpay({
@@ -17,7 +15,7 @@ const razorpay = new Razorpay({
 export const createRazorpayOrder = async (req, res) => {
   try {
     const options = {
-      amount: req.body.amount * 100, // amount in paise
+      amount: req.body.amount * 100, // in paise
       currency: "INR",
       receipt: `order_rcptid_${Date.now()}`,
     };
@@ -25,7 +23,7 @@ export const createRazorpayOrder = async (req, res) => {
     const order = await razorpay.orders.create(options);
     res.json(order);
   } catch (err) {
-    console.error("❌ Razorpay Order Error:", err);
+    console.error("❌ Razorpay Order Error:", err.message);
     res.status(500).json({ message: "Failed to create Razorpay order" });
   }
 };
@@ -46,7 +44,6 @@ export const verifyPayment = async (req, res) => {
       return res.status(400).json({ message: "Invalid payment signature" });
     }
 
-    // ✅ Save order in DB
     const newOrder = new Order({
       userId: req.user.id,
       products,
@@ -58,7 +55,7 @@ export const verifyPayment = async (req, res) => {
     const savedOrder = await newOrder.save();
     res.status(201).json(savedOrder);
   } catch (err) {
-    console.error("❌ Payment Verification Error:", err);
+    console.error("❌ Payment Verification Error:", err.message);
     res.status(500).json({ message: "Payment verification failed" });
   }
 };
@@ -72,11 +69,13 @@ export const createOrder = async (req, res) => {
       totalAmount: req.body.totalAmount,
       paymentMethod: req.body.paymentMethod || "COD",
       paymentStatus: req.body.paymentMethod === "COD" ? "Pending" : "Paid",
+      shippingAddress: req.body.shippingAddress,
     });
 
     const savedOrder = await newOrder.save();
     res.status(201).json(savedOrder);
   } catch (err) {
+    console.error("❌ COD Order Error:", err.message);
     res.status(500).json({ message: err.message });
   }
 };
@@ -84,11 +83,10 @@ export const createOrder = async (req, res) => {
 // ✅ User: Get My Orders
 export const getMyOrders = async (req, res) => {
   try {
-    const orders = await Order.find({ userId: req.user.id }).sort({
-      createdAt: -1,
-    });
+    const orders = await Order.find({ userId: req.user.id }).sort({ createdAt: -1 });
     res.json(orders);
   } catch (err) {
+    console.error("❌ Get My Orders Error:", err.message);
     res.status(500).json({ message: err.message });
   }
 };
@@ -99,6 +97,7 @@ export const getAllOrders = async (req, res) => {
     const orders = await Order.find().populate("userId", "name email");
     res.json(orders);
   } catch (err) {
+    console.error("❌ Get All Orders Error:", err.message);
     res.status(500).json({ message: err.message });
   }
 };
@@ -113,6 +112,7 @@ export const updateOrderStatus = async (req, res) => {
     const updated = await order.save();
     res.json(updated);
   } catch (err) {
+    console.error("❌ Update Status Error:", err.message);
     res.status(500).json({ message: err.message });
   }
 };
