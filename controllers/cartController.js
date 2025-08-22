@@ -2,6 +2,16 @@ import Cart from "../models/Cart.js";
 import Product from "../models/Product.js";
 
 // ✅ Get Cart with product details populated
+const buildImageUrl = (req, rawUrl) => {
+  if (!rawUrl) return null;
+  const normalized = String(rawUrl).trim();
+  const lower = normalized.toLowerCase();
+  if (lower.startsWith("http://") || lower.startsWith("https://")) {
+    return normalized;
+  }
+  return `${req.protocol}://${req.get("host")}${normalized}`;
+};
+
 export const getCart = async (req, res) => {
   try {
     const cart = await Cart.findOne({ userId: req.user._id })
@@ -21,13 +31,13 @@ export const getCart = async (req, res) => {
       quantity: item.quantity,
       size: item.size,
       color: item.color,
+      customText: item.customText || "",
+      customImage: buildImageUrl(req, item.customImage),
       product: {
         _id: item.productId._id,
         name: item.productId.name,
         price: item.productId.price,
-        imageUrl: item.productId.imageUrl
-          ? `${req.protocol}://${req.get("host")}${item.productId.imageUrl}`
-          : null,
+        imageUrl: buildImageUrl(req, item.productId.imageUrl),
       },
     }));
 
@@ -75,18 +85,27 @@ export const addToCart = async (req, res) => {
 // ✅ Update Quantity
 export const updateCartQuantity = async (req, res) => {
   try {
-    const { itemId, quantity } = req.body;
+    const { itemId } = req.params;
+    const { quantity } = req.body;
     const cart = await Cart.findOne({ userId: req.user._id });
 
     if (!cart) return res.status(404).json({ message: "Cart not found" });
 
-    const item = cart.items.id(itemId);
+    // Try finding by cart item _id first
+    let item = cart.items.id(itemId);
+    // Fallback: allow clients to pass productId by mistake
+    if (!item) {
+      item = cart.items.find(
+        (i) => i.productId && i.productId.toString() === String(itemId)
+      );
+    }
     if (!item) return res.status(404).json({ message: "Item not found" });
 
-    item.quantity = quantity;
+    const nextQty = Math.max(1, parseInt(quantity, 10) || 1);
+    item.quantity = nextQty;
     await cart.save();
 
-    res.json({ message: "Quantity updated" });
+    res.json({ message: "Quantity updated", itemId: item._id, quantity: item.quantity });
   } catch (error) {
     console.error("Error updating quantity:", error);
     res.status(500).json({ message: "Server error" });

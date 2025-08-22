@@ -1,16 +1,24 @@
 import Product from "../models/Product.js";
-import path from "path";
+
+const buildImageUrl = (req, rawUrl) => {
+  if (!rawUrl) return null;
+  const normalized = String(rawUrl).trim();
+  const lower = normalized.toLowerCase();
+  if (lower.startsWith("http://") || lower.startsWith("https://")) {
+    return normalized;
+  }
+  return `${req.protocol}://${req.get("host")}${normalized}`;
+};
 
 // GET /api/products
 export const getAllProducts = async (req, res) => {
   try {
     const products = await Product.find();
 
+    // ✅ Prepend host when stored value is relative; keep absolute as-is
     const formatted = products.map((p) => ({
       ...p._doc,
-      imageUrl: p.imageUrl
-        ? `${req.protocol}://${req.get("host")}${p.imageUrl}`
-        : null,
+      imageUrl: buildImageUrl(req, p.imageUrl),
     }));
 
     res.json(formatted);
@@ -23,13 +31,14 @@ export const getAllProducts = async (req, res) => {
 export const getProductById = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
-    if (!product) return res.status(404).json({ message: "Product not found" });
+
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
 
     const formatted = {
       ...product._doc,
-      imageUrl: product.imageUrl
-        ? `${req.protocol}://${req.get("host")}${product.imageUrl}`
-        : null,
+      imageUrl: buildImageUrl(req, product.imageUrl),
     };
 
     res.json(formatted);
@@ -41,20 +50,21 @@ export const getProductById = async (req, res) => {
 // POST /api/products
 export const createProduct = async (req, res) => {
   try {
+    // ✅ Normalize imageUrl to a relative path before saving
     let imageUrl = req.body.imageUrl;
-
     if (imageUrl) {
+      // If a full URL was sent (e.g., http://localhost:3000/uploads/xxx.jpg), strip host
       try {
-        // Strip full URL to relative path
         const parsed = new URL(imageUrl);
         imageUrl = parsed.pathname;
       } catch (_) {
-        // Not a full URL, ignore
+        // Not a full URL, keep as-is
       }
 
-      // Auto-correct missing /uploads prefix
       if (!imageUrl.startsWith("/uploads/")) {
-        imageUrl = `/uploads/${path.basename(imageUrl)}`;
+        return res.status(400).json({
+          message: "imageUrl must resolve under /uploads (e.g. /uploads/file.png)",
+        });
       }
     }
 
@@ -63,9 +73,7 @@ export const createProduct = async (req, res) => {
 
     const formatted = {
       ...savedProduct._doc,
-      imageUrl: savedProduct.imageUrl
-        ? `${req.protocol}://${req.get("host")}${savedProduct.imageUrl}`
-        : null,
+      imageUrl: buildImageUrl(req, savedProduct.imageUrl),
     };
 
     res.status(201).json(formatted);
@@ -78,8 +86,9 @@ export const createProduct = async (req, res) => {
 export const deleteProduct = async (req, res) => {
   try {
     const product = await Product.findByIdAndDelete(req.params.id);
-    if (!product) return res.status(404).json({ message: "Product not found" });
-
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
     res.json({ message: "Product deleted successfully" });
   } catch (err) {
     res.status(500).json({ message: err.message });
