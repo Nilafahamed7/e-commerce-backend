@@ -8,6 +8,8 @@ const productSchema = new mongoose.Schema(
     imageUrl: { type: String }, // stores relative path like "/uploads/xxx.jpg"
     category: { type: String },
     stock: { type: Number, default: 0 },
+    sizeOptions: { type: [String], default: [] },
+    colorOptions: { type: [String], default: [] },
   },
   { timestamps: true }
 );
