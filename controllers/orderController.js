@@ -117,11 +117,18 @@
 //   }
 // };
 
+
+
+
+
+
+
 // server/controllers/orderController.js
 import Order from "../models/Order.js";
 import Razorpay from "razorpay";
 import dotenv from "dotenv";
 import crypto from "crypto";
+import Product from "../models/Product.js";
 
 dotenv.config();
 
@@ -260,10 +267,10 @@ export const createOrder = async (req, res) => {
 export const getMyOrders = async (req, res) => {
   try {
     const orders = await Order.find({ userId: req.user._id })
-      .populate("products.productId", "title image price") // fetch product details
+      .populate("products.productId", "name price imageUrl") // ✅ populate imageUrl
       .sort({ createdAt: -1 });
 
-    res.json(orders); // <-- return plain array, not { orders }
+    res.json(orders); // return array
   } catch (err) {
     console.error("❌ Error fetching orders:", err);
     res.status(500).json({ message: "Server error" });
@@ -271,16 +278,32 @@ export const getMyOrders = async (req, res) => {
 };
 
 
+// // ✅ Admin: Get All Orders
+// export const getAllOrders = async (req, res) => {
+//   try {
+//     const orders = await Order.find().populate("userId", "name email");
+//     res.json(orders);
+//   } catch (err) {
+//     console.error("❌ Get All Orders Error:", err);
+//     res.status(500).json({ message: err.message });
+//   }
+// };
+
 // ✅ Admin: Get All Orders
 export const getAllOrders = async (req, res) => {
   try {
-    const orders = await Order.find().populate("userId", "name email");
+    const orders = await Order.find()
+      .populate("userId", "name email") // show user info
+      .populate("products.productId", "name price imageUrl") // include product image
+      .sort({ createdAt: -1 });
+
     res.json(orders);
-  } catch (err) {
-    console.error("❌ Get All Orders Error:", err);
-    res.status(500).json({ message: err.message });
+  } catch (error) {
+    console.error("❌ Error fetching all orders:", error);
+    res.status(500).json({ message: "Server error while fetching all orders" });
   }
 };
+
 
 // ✅ Admin: Update Order Status
 export const updateOrderStatus = async (req, res) => {
