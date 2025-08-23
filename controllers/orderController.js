@@ -7,9 +7,6 @@ import Product from "../models/Product.js";
 
 dotenv.config();
 
-console.log("KEY ID:", process.env.RAZORPAY_KEY_ID);
-console.log("KEY SECRET:", process.env.RAZORPAY_KEY_SECRET);
-
 
 // ✅ Razorpay instance
 const razorpay = new Razorpay({

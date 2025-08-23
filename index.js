@@ -71,10 +71,7 @@ const __dirname = path.dirname(__filename);
 // ✅ Force dotenv to load from server/.env
 dotenv.config({ path: path.resolve(__dirname, ".env") });
 
-// Debug logs
-console.log("📂 Loaded .env from:", path.resolve(__dirname, ".env"));
-console.log("🔑 RAZORPAY_KEY_ID:", process.env.RAZORPAY_KEY_ID);
-console.log("🔑 RAZORPAY_KEY_SECRET:", process.env.RAZORPAY_KEY_SECRET);
+
 
 // Routes
 import productRoutes from "./routes/productRoutes.js";
