@@ -61,10 +61,16 @@ export const createProduct = async (req, res) => {
         // Not a full URL, keep as-is
       }
 
+      //   if (!imageUrl.startsWith("/uploads/")) {
+      //     return res.status(400).json({
+      //       message: "imageUrl must resolve under /uploads (e.g. /uploads/file.png)",
+      //     });
+      //   }
+      // }
+
+      // ✅ Fix instead of rejecting: prepend /uploads/ if missing
       if (!imageUrl.startsWith("/uploads/")) {
-        return res.status(400).json({
-          message: "imageUrl must resolve under /uploads (e.g. /uploads/file.png)",
-        });
+        imageUrl = `/uploads/${imageUrl}`;
       }
     }
 
