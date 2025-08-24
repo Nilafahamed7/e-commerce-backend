@@ -1,27 +1,29 @@
 import Product from "../models/Product.js";
+import cloudinary from "../config/cloudinary.js";
+import { Readable } from "stream";
 
-const buildImageUrl = (req, rawUrl) => {
-  if (!rawUrl) return null;
-  const normalized = String(rawUrl).trim();
-  const lower = normalized.toLowerCase();
-  if (lower.startsWith("http://") || lower.startsWith("https://")) {
-    return normalized;
-  }
-  return `${req.protocol}://${req.get("host")}${normalized}`;
-};
+// Helper: upload buffer to Cloudinary
+function uploadBufferToCloudinary(buffer, folder = "ecommerce/products") {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { folder },
+      (error, result) => {
+        if (error) return reject(error);
+        resolve(result);
+      }
+    );
+    Readable.from(buffer).pipe(stream);
+  });
+}
+
+// ------------------ CONTROLLERS ------------------
 
 // GET /api/products
 export const getAllProducts = async (req, res) => {
   try {
     const products = await Product.find();
-
-    // ✅ Prepend host when stored value is relative; keep absolute as-is
-    const formatted = products.map((p) => ({
-      ...p._doc,
-      imageUrl: buildImageUrl(req, p.imageUrl),
-    }));
-
-    res.json(formatted);
+    // ✅ imageUrl is already Cloudinary URL → return as-is
+    res.json(products);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -31,17 +33,10 @@ export const getAllProducts = async (req, res) => {
 export const getProductById = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
-
     if (!product) {
       return res.status(404).json({ message: "Product not found" });
     }
-
-    const formatted = {
-      ...product._doc,
-      imageUrl: buildImageUrl(req, product.imageUrl),
-    };
-
-    res.json(formatted);
+    res.json(product);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -50,39 +45,30 @@ export const getProductById = async (req, res) => {
 // POST /api/products
 export const createProduct = async (req, res) => {
   try {
-    // ✅ Normalize imageUrl to a relative path before saving
-    let imageUrl = req.body.imageUrl;
-    if (imageUrl) {
-      // If a full URL was sent (e.g., http://localhost:3000/uploads/xxx.jpg), strip host
-      try {
-        const parsed = new URL(imageUrl);
-        imageUrl = parsed.pathname;
-      } catch (_) {
-        // Not a full URL, keep as-is
-      }
+    let imageUrl = null;
 
-      //   if (!imageUrl.startsWith("/uploads/")) {
-      //     return res.status(400).json({
-      //       message: "imageUrl must resolve under /uploads (e.g. /uploads/file.png)",
-      //     });
-      //   }
-      // }
-
-      // ✅ Fix instead of rejecting: prepend /uploads/ if missing
-      if (!imageUrl.startsWith("/uploads/")) {
-        imageUrl = `/uploads/${imageUrl}`;
-      }
+    // ✅ If file uploaded, send to Cloudinary
+    if (req.file) {
+      const result = await uploadBufferToCloudinary(req.file.buffer);
+      imageUrl = result.secure_url;
+    } else if (req.body.imageUrl) {
+      // In case you pass a direct Cloudinary URL manually
+      imageUrl = req.body.imageUrl;
     }
 
-    const newProduct = new Product({ ...req.body, imageUrl });
+    const newProduct = new Product({
+      name: req.body.name,
+      price: req.body.price,
+      description: req.body.description,
+      category: req.body.category,
+      stock: req.body.stock,
+      sizeOptions: req.body.sizeOptions || [],
+      colorOptions: req.body.colorOptions || [],
+      imageUrl, // ✅ now always Cloudinary absolute URL
+    });
+
     const savedProduct = await newProduct.save();
-
-    const formatted = {
-      ...savedProduct._doc,
-      imageUrl: buildImageUrl(req, savedProduct.imageUrl),
-    };
-
-    res.status(201).json(formatted);
+    res.status(201).json(savedProduct);
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
