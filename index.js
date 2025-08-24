@@ -82,8 +82,18 @@ import adminRoutes from "./routes/adminRoutes.js";
 
 const app = express();
 
+
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: [
+    "https://e-commerce-frontend-pi-pied.vercel.app", // your Vercel frontend
+    "http://localhost:5173" // local dev
+  ],
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true
+}));
+app.use(express.json());
+
 app.use(express.json());
 
 // ✅ Fix path resolution for uploads
@@ -114,5 +124,4 @@ mongoose
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log(`📂 Serving uploads from: ${uploadsPath}`);
 });
