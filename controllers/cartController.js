@@ -12,21 +12,30 @@ const buildImageUrl = (req, rawUrl) => {
   return `${req.protocol}://${req.get("host")}${normalized}`;
 };
 
+
+// ✅ Get Cart with product details populated & auto-clean invalid items
 export const getCart = async (req, res) => {
   try {
-    const cart = await Cart.findOne({ userId: req.user._id })
+    let cart = await Cart.findOne({ userId: req.user._id })
       .populate({
         path: "items.productId",
         model: "Product",
-        select: "name price imageUrl", // only necessary fields
+        select: "name price imageUrl",
       });
 
     if (!cart) {
       return res.json({ items: [] });
     }
 
-    // Format cart so frontend can directly access product info
-    const formattedItems = cart.items.map(item => ({
+    // ✅ Remove items where productId is null (product deleted)
+    const validItems = cart.items.filter(item => item.productId !== null);
+
+    if (validItems.length !== cart.items.length) {
+      cart.items = validItems;
+      await cart.save(); // 🔥 permanently cleans DB
+    }
+
+    const formattedItems = validItems.map(item => ({
       _id: item._id,
       quantity: item.quantity,
       size: item.size,
@@ -47,6 +56,7 @@ export const getCart = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
 
 // ✅ Add Item to Cart
 export const addToCart = async (req, res) => {
