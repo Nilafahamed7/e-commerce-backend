@@ -1,4 +1,4 @@
-// // index.js inside server/
+// index.js inside server/
 // import express from "express";
 // import dotenv from "dotenv";
 // import mongoose from "mongoose";
@@ -89,7 +89,7 @@ app.use(cors({
     "https://e-commerce-frontend-pi-pied.vercel.app", // your Vercel frontend
     "http://localhost:5173" // local dev
   ],
-  methods: ["GET", "POST", "PUT", "DELETE"],
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
   credentials: true
 }));
 app.use(express.json());

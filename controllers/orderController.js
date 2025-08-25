@@ -7,7 +7,6 @@ import Product from "../models/Product.js";
 
 dotenv.config();
 
-
 // ✅ Razorpay instance
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -108,21 +107,19 @@ export const createOrder = async (req, res) => {
   }
 };
 
-
+// ✅ User: Get My Orders (fixed)
 export const getMyOrders = async (req, res) => {
   try {
-    const orders = await Order.find({ userId: req.user._id })
-      .populate("products.productId", "name price imageUrl") // ✅ populate imageUrl
+    const orders = await Order.find({ userId: req.user.id }) // ✅ FIXED (use id)
+      .populate("products.productId", "name price imageUrl")
       .sort({ createdAt: -1 });
 
-    res.json(orders); // return array
+    res.json(orders);
   } catch (err) {
     console.error("❌ Error fetching orders:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
-
-
 
 // ✅ Admin: Get All Orders
 export const getAllOrders = async (req, res) => {
@@ -138,7 +135,6 @@ export const getAllOrders = async (req, res) => {
     res.status(500).json({ message: "Server error while fetching all orders" });
   }
 };
-
 
 // ✅ Admin: Update Order Status
 export const updateOrderStatus = async (req, res) => {
